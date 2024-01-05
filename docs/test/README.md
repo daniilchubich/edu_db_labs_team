@@ -2,34 +2,57 @@
 
 ## Тестування REST API
 
-### POST 
+### Робота з таблицею User 
 
-#### Перед запитом
-![alt text](./img/post_before.png)
-#### Запит
-![alt text](./img/post.png)
-#### Після запиту
-![alt text](./img/post_after.png)
+#### Отримати всіх користувачів
+![alt text](./img/user/findAll.png)
+#### Отримати користувача за його name
+![alt text](./img/user/find.png)
+#### Додати нового користувача
+![alt text](./img/user/add.png)
+#### Видалити користувача за його name
+![alt text](./img/user/delete.png)
 
-### GET
+### Робота з таблицею Media
 
-#### Пошук 
-![alt text](./img/get_id.png)
+#### Отримати всі Медіа
+![alt text](./img/media/findAll.png)
+#### Отримати медіа за його name
+![alt text](./img/media/find.png)
+#### Додати нову медіа
+![alt text](./img/media/add.png)
+#### Видалити медіа за його name
+![alt text](./img/media/delete.png)
 
-### PUT 
+### Робота з таблицею Origin
 
-#### Перед запитом
-![alt text](./img/put_after.png)
-#### Запит
-![alt text](./img/put.png)
-#### Після запиту
-![alt text](./img/get_id.png)
+#### Отримати усі Origin
+![alt text](./img/origin/findAll.png)
+#### Отримати Origin за його name
+![alt text](./img/origin/find.png)
+#### Додати новий Origin
+![alt text](./img/origin/add.png)
+#### Видалити Origin за його name
+![alt text](./img/origin/delete.png)
 
-### DELETE
+### Робота з таблицею Request
 
-#### Перед запитом
-![alt text](./img/delete_before.png)
-#### Запит
-![alt text](./img/delete.png)
-#### Після запиту
-![alt text](./img/delete_after.png)
+#### Отримати усі запити
+![alt text](./img/request/findAll.png)
+#### Отримати запит за його id
+![alt text](./img/request/find.png)
+#### Додати новий запит
+![alt text](./img/request/add.png)
+#### Видалити запит за його id
+![alt text](./img/request/delete.png)
+
+### Робота з таблицею Role
+
+#### Отримати усі ролі
+![alt text](./img/role/findAll.png)
+#### Отримати роль за її name
+![alt text](./img/role/find.png)
+#### Додати нову роль
+![alt text](./img/role/add.png)
+#### Видалити роль за її name
+![alt text](./img/role/delete.png)
