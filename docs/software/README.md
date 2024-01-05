@@ -192,117 +192,505 @@ INSERT INTO `mydb`.`source` (`id`, `url`, `request_id`) VALUES (DEFAULT, 'https:
 COMMIT;
 ```
 
-## RESTfull сервіс 
+# RESTfull сервіс 
 
-### Файл запуску сервера
+## Головні файли
 
-```js
-const express = require('express');
-const bodyParser = require('body-parser');
-const connection = require('./connection');
-const router = require('./router');
+### Головний файл для підключення до бази даних відправки запитів 
 
-const app = express();
-const port = 3030;
+```Database.php
+<?php
 
-connection.connect();
+trait Database
+{
+    private function connect()
+    {
+        $string = "mysql:hostname=" . DB_HOST . ";dbname=" . DB_NAME;
+        $con = new PDO($string, DB_USER, DB_PASSWORD);
+        //show($con);
 
-app.use(bodyParser.json());
-app.use(router);
-
-app.listen(port, () => {
-  console.log(`Сервер запущений на localhost:${port}`);
-});
-```
-
-### Модуль підключення до бази даних
-
-```js
-const express = require('express');
-const connection = require('./connection');
-const router = express.Router();
-
-const handleErrors = (res, error, successMessage) => {
-  if (error) {
-    console.log(error);
-    res.send('Сталася помилка');
-    return false;
-  }
-  res.send(successMessage);
-  return true;
-};
-
-router.post('/results', async (req, res) => {
-  const { title, description, request_id } = req.body;
-
-  if (!(title && description && request_id)) {
-    return res.send('Пусте поле');
-  }
-
-  try {
-    const result = await connection.query(
-      'INSERT INTO result (id, title, description, request_id) VALUES (DEFAULT, ?, ?, ?)',
-      [title, description, request_id]
-    );
-
-    handleErrors(res, result.error, 'Додано');
-  } catch (error) {
-    handleErrors(res, error, 'Сталася помилка');
-  }
-});
-
-router.get('/results', async (req, res) => {
-  try {
-    const results = await connection.query('SELECT * FROM result');
-    res.send(results);
-  } catch (error) {
-    handleErrors(res, error, 'Сталася помилка');
-  }
-});
-
-router.get('/result/:id', async (req, res) => {
-  const id = req.params.id;
-  try {
-    const result = await connection.query('SELECT * FROM result WHERE id = ?', [id]);
-    res.send(result);
-  } catch (error) {
-    handleErrors(res, error, 'Сталася помилка');
-  }
-});
-
-router.put('/result/:id', async (req, res) => {
-  const id = req.params.id;
-
-  try {
-    const [existingResult] = await connection.query('SELECT * FROM result WHERE id = ?', [id]);
-
-    if (!existingResult) {
-      return res.send('Результат не знайдено');
+        return $con;
     }
 
-    const updatedResult = { ...existingResult, ...req.body };
-    await connection.query(
-      'UPDATE result SET title = ?, description = ?, request_id = ? WHERE id = ?',
-      [updatedResult.title, updatedResult.description, updatedResult.request_id, id]
-    );
+    public function query($query, $data = [])
+    {
+        $con = $this->connect();
+        $stm = $con->prepare($query);
 
-    handleErrors(res, null, 'Оновлено');
-  } catch (error) {
-    handleErrors(res, error, 'Сталася помилка');
-  }
+        $check = $stm->execute($data);
+        if ($check) {
+            $result = $stm->fetchAll(PDO::FETCH_OBJ);
+
+            if (is_array($result) && count($result)) {
+                return $result;
+            }
+        }
+
+        return false;
+    }
+
+    public function get_row($query, $data = [])
+    {
+        $con = $this->connect();
+        $stm = $con->prepare($query);
+
+        $check = $stm->execute($data);
+        if ($check) {
+            $result = $stm->fetchAll(PDO::FETCH_OBJ);
+
+            if (is_array($result) && count($result)) {
+                return $result[0];
+            }
+        }
+
+        return false;
+    }
+}
+
+```
+
+### Файл завантаження контролерів
+
+```App.php
+<?php
+
+class App
+{
+    private $controller = 'Home';
+    private $method = 'index';
+
+    private function splitUrl()
+    {
+        $URL = $_GET['url'] ?? 'home';
+        $URL = explode("/", trim($URL, "/"));
+        return $URL;
+    }
+
+    public function loadController()
+    {
+        $URL = $this->splitUrl();
+        $filename = "../app/controllers/" . ucfirst($URL[0]) . ".php";
+
+        if (file_exists($filename)) {
+            require $filename;
+            $this->controller = ucfirst($URL[0]);
+            unset($URL[0]);
+        } else {
+            $filename = "../app/controllers/_404.php";
+            require $filename;
+            $this->controller = '_404';
+        }
+
+        $controller = new $this->controller;
+
+        //check if method exist 
+        if (!empty($URL[1])) {
+            if (method_exists($controller, $URL[1])) {
+                $this->method = $URL[1];
+                unset($URL[1]);
+            }
+        }
+
+        call_user_func_array([$controller, $this->method], $URL);
+    }
+}
+
+
+```
+### Константи
+```config.php
+<?php
+
+class App
+{
+    private $controller = 'Home';
+    private $method = 'index';
+
+    private function splitUrl()
+    {
+        $URL = $_GET['url'] ?? 'home';
+        $URL = explode("/", trim($URL, "/"));
+        return $URL;
+    }
+
+    public function loadController()
+    {
+        $URL = $this->splitUrl();
+        $filename = "../app/controllers/" . ucfirst($URL[0]) . ".php";
+
+        if (file_exists($filename)) {
+            require $filename;
+            $this->controller = ucfirst($URL[0]);
+            unset($URL[0]);
+        } else {
+            $filename = "../app/controllers/_404.php";
+            require $filename;
+            $this->controller = '_404';
+        }
+
+        $controller = new $this->controller;
+
+        //check if method exist 
+        if (!empty($URL[1])) {
+            if (method_exists($controller, $URL[1])) {
+                $this->method = $URL[1];
+                unset($URL[1]);
+            }
+        }
+
+        call_user_func_array([$controller, $this->method], $URL);
+    }
+}
+
+
+```
+### Відповідає за відображення шаблонів
+```Controller.php
+<?php
+
+class Controller
+{
+    public function view($name)
+    {
+        $filename = "../app/views/" . $name . ".view.php";
+
+        if (file_exists($filename)) {
+            require $filename;
+        } else {
+            $filename = "../app/views/404.view.php";
+            require $filename;
+        }
+    }
+}
+
+
+
+```
+### Файл Функцій
+```fuctions.php
+<?php
+
+function show($stuff)
+{
+    echo "<pre>";
+    print_r($stuff);
+    echo "</pre>";
+}
+
+function esc($str)
+{
+    return htmlspecialchars($str);
+}
+
+
+```
+### Ініціалізація файлів в Core
+```init.php
+<?php
+
+spl_autoload_register(function ($classname) {
+    require $filename = "../app/models/" . ucfirst($classname) . ".php";
+    //echo $filename;
 });
 
-router.delete('/result/:id', async (req, res) => {
-  const id = req.params.id;
+require 'config.php';
+require 'functions.php';
+require 'Database.php';
+require 'Model.php';
+require 'Controller.php';
+require 'App.php';
 
-  try {
-    const result = await connection.query('DELETE FROM result WHERE id = ?', [id]);
-    handleErrors(res, result.error, 'Видалено');
-  } catch (error) {
-    handleErrors(res, error, 'Сталася помилка');
-  }
-});
 
-module.exports = router;
+
+```
+### Методи для роботи з Моделями
+```Model.php
+<?php
+
+trait Model
+{
+    //you can only extends one Class but can add many traits
+    //add trait Database to this Model
+    use Database;
+
+    // test connect to DB
+    function test()
+    {
+        $query = "SELECT * FROM users";
+        $result = $this->query($query);
+        //show($result);
+    }
+
+    protected $limit = 10;
+    protected $offset = 0;
+    protected $order_type = "desc";
+    protected $order_column = "id";
+
+    //FINDALL query
+    public function findAll()
+    {
+        //build query
+        $query = "SELECT * FROM $this->table ORDER BY $this->order_column $this->order_type LIMIT $this->limit OFFSET $this->offset";
+        //echo $query;
+
+        return $this->query($query);
+    }
+
+    //WHERE query
+    public function where($data, $data_not = [])
+    {
+        //grab all keys from array
+        $keys = array_keys($data);
+        $keys_not = array_keys($data_not);
+        $query = "SELECT * FROM $this->table WHERE ";
+
+        foreach ($keys as $key) {
+            $query .= $key . " = :" . $key . " && ";
+        }
+        foreach ($keys_not as $key) {
+            $query .= $key . " != :" . $key . " && ";
+        }
+
+        //delete last symbols in string
+        $query = trim($query, " && ");
+
+        //build query
+        $query .= " ORDER BY $this->order_column $this->order_type LIMIT $this->limit OFFSET $this->offset";
+        $data = array_merge($data, $data_not);
+        //echo $query;
+
+        return $this->query($query, $data);
+    }
+
+    //FIRST query, get first item
+    public function first($data, $data_not = [])
+    {
+        //grab all keys from array
+        $keys = array_keys($data);
+        $keys_not = array_keys($data_not);
+        $query = "SELECT * FROM $this->table WHERE ";
+
+        foreach ($keys as $key) {
+            $query .= $key . " = :" . $key . " && ";
+        }
+        foreach ($keys_not as $key) {
+            $query .= $key . " != :" . $key . " && ";
+        }
+
+        //delete last symbols in string
+        $query = trim($query, " && ");
+
+        //build query
+        $query .= " LIMIT $this->limit OFFSET $this->offset";
+        $data = array_merge($data, $data_not);
+        //echo $query;
+
+        $result = $this->query($query, $data);
+        if ($result) {
+            return $result[0];
+        }
+
+        return false;
+    }
+
+    //INSERT query, add new row to db
+    public function insert($data)
+    {
+        //remove unwanted columns in data
+        if (!empty($this->allowedColumns)) {
+            foreach ($data as $key) {
+                if (!in_array($key, $this->allowedColumns)) {
+                    unset($data[$key]);
+                }
+            }
+        }
+
+        //grab all keys from array
+        $keys = array_keys($data);
+        $query = "INSERT INTO $this->table (" . implode(", ", $keys) . ") VALUES (:" . implode(", :", $keys) . ")";
+        //echo $query;
+
+        $this->query($query, $data);
+
+        return false;
+    }
+
+    //UPDATE query
+    public function update($id, $data, $id_column = 'id')
+    {
+        //remove unwanted columns in data
+        if (!empty($this->allowedColumns)) {
+            foreach ($data as $key) {
+                if (!in_array($key, $this->allowedColumns)) {
+                    unset($data[$key]);
+                }
+            }
+        }
+
+        //grab all keys from array
+        $keys = array_keys($data);
+        $query = "UPDATE $this->table SET ";
+
+        foreach ($keys as $key) {
+            $query .= $key . " = :" . $key . ", ";
+        }
+
+        //delete last symbols in string
+        $query = trim($query, ", ");
+
+        //build query
+        $query .= "  WHERE $id_column = :$id_column";
+        //echo $query;
+
+        $data[$id_column] = $id;
+        $this->query($query, $data);
+
+        return false;
+    }
+
+    //DELETE query
+    public function delete($id, $id_column = 'id')
+    {
+        $data[$id_column] = $id;
+        $query = "DELETE FROM $this->table WHERE $id_column = :$id_column";
+        //echo $query;
+
+        $this->query($query, $data);
+
+        return false;
+    }
+}
+
+
+```
+### Константи
+```config.php
+<?php
+
+class App
+{
+    private $controller = 'Home';
+    private $method = 'index';
+
+    private function splitUrl()
+    {
+        $URL = $_GET['url'] ?? 'home';
+        $URL = explode("/", trim($URL, "/"));
+        return $URL;
+    }
+
+    public function loadController()
+    {
+        $URL = $this->splitUrl();
+        $filename = "../app/controllers/" . ucfirst($URL[0]) . ".php";
+
+        if (file_exists($filename)) {
+            require $filename;
+            $this->controller = ucfirst($URL[0]);
+            unset($URL[0]);
+        } else {
+            $filename = "../app/controllers/_404.php";
+            require $filename;
+            $this->controller = '_404';
+        }
+
+        $controller = new $this->controller;
+
+        //check if method exist 
+        if (!empty($URL[1])) {
+            if (method_exists($controller, $URL[1])) {
+                $this->method = $URL[1];
+                unset($URL[1]);
+            }
+        }
+
+        call_user_func_array([$controller, $this->method], $URL);
+    }
+}
+
+
+```
+## Файли Моделей
+
+```Grant_model.php
+<?php
+
+class Grant_model
+{
+    use Model;
+
+    protected $table = 'grant';
+    protected $allowedColumns = [
+        'title',
+        'description',
+        'role_id'
+    ];
+}
+
+```
+
+```Media_model.php
+<?php
+
+class Media_model
+{
+    use Model;
+
+    protected $table = "media";
+    protected $allowedColumns = [
+        "type",
+        "url",
+        "name",
+        "metadate",
+        "Origin_id"
+    ];
+}
+
+```
+### Константи
+```config.php
+<?php
+
+class App
+{
+    private $controller = 'Home';
+    private $method = 'index';
+
+    private function splitUrl()
+    {
+        $URL = $_GET['url'] ?? 'home';
+        $URL = explode("/", trim($URL, "/"));
+        return $URL;
+    }
+
+    public function loadController()
+    {
+        $URL = $this->splitUrl();
+        $filename = "../app/controllers/" . ucfirst($URL[0]) . ".php";
+
+        if (file_exists($filename)) {
+            require $filename;
+            $this->controller = ucfirst($URL[0]);
+            unset($URL[0]);
+        } else {
+            $filename = "../app/controllers/_404.php";
+            require $filename;
+            $this->controller = '_404';
+        }
+
+        $controller = new $this->controller;
+
+        //check if method exist 
+        if (!empty($URL[1])) {
+            if (method_exists($controller, $URL[1])) {
+                $this->method = $URL[1];
+                unset($URL[1]);
+            }
+        }
+
+        call_user_func_array([$controller, $this->method], $URL);
+    }
+}
+
 
 ```
