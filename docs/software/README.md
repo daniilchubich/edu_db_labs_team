@@ -1,6 +1,6 @@
 # Реалізація інформаційного та програмного забезпечення
 
-## SQL-скрипт 
+## SQL-скрипт
 
 ```sql
 -- MySQL Workbench Forward Engineering
