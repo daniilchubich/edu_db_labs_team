@@ -196,7 +196,7 @@ COMMIT;
 
 ## Головні файли
 
-### Головний файл для підключення до бази даних відправки запитів 
+### Головний файл для підключення до бази даних відправки запитів (Database.php)
 
 ```Database.php
 <?php
@@ -249,7 +249,7 @@ trait Database
 
 ```
 
-### Файл завантаження контролерів
+### Файл завантаження контролерів (App.php)
 
 ```App.php
 <?php
@@ -297,7 +297,7 @@ class App
 
 
 ```
-### Константи
+### Константи (config.php)
 ```config.php
 <?php
 
@@ -344,7 +344,7 @@ class App
 
 
 ```
-### Відповідає за відображення шаблонів
+### Відповідає за відображення шаблонів home.view.php та якщо помилка 404view.php (Controller.php)
 ```Controller.php
 <?php
 
@@ -366,7 +366,7 @@ class Controller
 
 
 ```
-### Файл Функцій
+### Файл Функцій (fuctions.php)
 ```fuctions.php
 <?php
 
@@ -384,7 +384,7 @@ function esc($str)
 
 
 ```
-### Ініціалізація файлів в Core
+### Ініціалізація файлів в Core (init.php)
 ```init.php
 <?php
 
@@ -403,7 +403,7 @@ require 'App.php';
 
 
 ```
-### Методи для роботи з Моделями
+### Методи для роботи з Моделями (Model.php)
 ```Model.php
 <?php
 
@@ -563,7 +563,7 @@ trait Model
 
 
 ```
-### Константи
+### Константи (config.php)
 ```config.php
 <?php
 
@@ -611,7 +611,7 @@ class App
 
 ```
 ## Файли Моделей
-
+Grant_model.php
 ```Grant_model.php
 <?php
 
@@ -628,7 +628,7 @@ class Grant_model
 }
 
 ```
-
+Media_model.php
 ```Media_model.php
 <?php
 
@@ -647,50 +647,441 @@ class Media_model
 }
 
 ```
-### Константи
-```config.php
+
+Origin_model.php
+```Origin_model.php
 <?php
 
-class App
+class Origin_model
 {
-    private $controller = 'Home';
-    private $method = 'index';
+    use Model;
 
-    private function splitUrl()
-    {
-        $URL = $_GET['url'] ?? 'home';
-        $URL = explode("/", trim($URL, "/"));
-        return $URL;
-    }
-
-    public function loadController()
-    {
-        $URL = $this->splitUrl();
-        $filename = "../app/controllers/" . ucfirst($URL[0]) . ".php";
-
-        if (file_exists($filename)) {
-            require $filename;
-            $this->controller = ucfirst($URL[0]);
-            unset($URL[0]);
-        } else {
-            $filename = "../app/controllers/_404.php";
-            require $filename;
-            $this->controller = '_404';
-        }
-
-        $controller = new $this->controller;
-
-        //check if method exist 
-        if (!empty($URL[1])) {
-            if (method_exists($controller, $URL[1])) {
-                $this->method = $URL[1];
-                unset($URL[1]);
-            }
-        }
-
-        call_user_func_array([$controller, $this->method], $URL);
-    }
+    protected $table = 'origin';
+    protected $allowedColumns = [
+        'name',
+        'location',
+        'rating'
+    ];
 }
 
 
 ```
+
+Request_model.php
+```Request_model.php
+<?php
+
+class Request_model
+{
+    use Model;
+
+    protected $table = 'request';
+    protected $allowedColumns = [
+        'id',
+        'desription',
+        'media_id',
+        'user_id'
+    ];
+}
+
+```
+Role_model.php
+```Role_model.php
+<?php
+
+class Role_model
+{
+    use Model;
+
+    protected $table = 'role';
+    protected $allowedColumns = [
+        'name',
+        'grants'
+    ];
+}
+
+
+```
+User_model.php
+```User_model.php
+<?php
+
+class User_model
+{
+    use Model;
+
+    protected $table = 'user';
+    protected $allowedColumns = [
+        'name',
+        'login',
+        'password',
+        'email',
+        'role_id'
+    ];
+}
+
+
+```
+Users.php
+```Users.php
+<?php
+
+class Users extends Controller
+{
+    public function findAll()
+    {
+        echo "this is findAll method" . "<br>";
+        $user = new User_model();
+        if($user->findAll() !== false){
+            show($user->findAll());
+        }
+        else{
+            show("No Users");
+    }
+
+        $this->view('home');
+    }
+
+    public function add()
+    {
+        echo "this is add method" . "<br>";
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+            $data = json_decode(file_get_contents('php://input'), true);
+           // show($data['email']);
+        } else {
+            echo "Send User Details";
+        }
+        $user = new User_model();
+        if($user->first(['email' => $data['email']]) === false && $user->first(['login' => $data['login']]) === false){
+            show($user->insert($data).  'User ADD');
+        }
+        else{
+            show("User Exists");
+    }
+
+        $this->view('home');
+    }
+    public function delete($data)
+    {
+        echo "this is delete method" . "<br>";
+
+        $user = new User_model();
+        if($user->first(['login' => $data]) !== false){
+            $row_user = $user->first(['login' => $data]);
+            show($user->delete($row_user->id) .  'User delete');
+        }
+        else{
+            show("No Users");
+    }
+
+        $this->view('home');
+    }
+    public function find($data)
+    {
+        echo "this is find method" . "<br>";
+
+        $user = new User_model();
+        if($user->first(['login' => $data]) !== false){
+            show($user->first(['login' => $data]));
+        }
+        else{
+            show("No Users");
+    }
+
+        $this->view('home');
+    }
+//   $user->update(9, ['name' => 'Slavik2', 'age' => 12]);
+
+}
+
+
+
+```
+Roles.php
+```Roles.php
+<?php
+
+class Roles extends Controller
+{
+    public function findAll()
+    {
+        echo "this is findAll method" . "<br>";
+
+        $role = new Role_model();
+        if($role->findAll() !== false){
+            show($role->findAll());
+        }
+        else{
+            show("No roles");
+    }
+
+        $this->view('home');
+    }
+
+    public function add()
+    {
+        echo "this is add method" . "<br>";
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+            $data = json_decode(file_get_contents('php://input'), true);
+        } else {
+            echo "Send Role Details";
+        }
+        $role = new Role_model();
+        if($role->first(['name' => $data['name']]) === false){
+            show($role->insert($data) .  'Role ADD');
+        }
+        else{
+            show("role Exists");
+    }
+
+        $this->view('home');
+    }
+    public function delete($data)
+    {
+        echo "this is delete method" . "<br>";
+
+        $role = new Role_model();
+        if($role->first(['name' => $data]) !== false){
+            $row_role = $role->first(['name' => $data]);
+            show($role->delete($row_role->id).  'Role DELETE');
+        }
+        else{
+            show("No roles");
+    }
+
+        $this->view('home');
+    }
+    public function find($data = '')
+    {
+        echo "this is find method" . "<br>";
+
+        $role = new Role_model();
+        if($role->first(['name' => $data]) !== false){
+            show($role->first(['name' => $data]));
+        }
+        else{
+            show("No roles");
+    }
+
+        $this->view('home');
+    }
+
+}
+
+
+
+```
+Requests.php
+```Requests.php
+<?php
+
+class Requests extends Controller
+{
+    public function findAll()
+    {
+        echo "this is findAll method" . "<br>";
+
+        $request = new Request_model();
+        if($request->findAll() !== false){
+            show($request->findAll());
+        }
+        else{
+            show("No requests");
+    }
+
+        $this->view('home');
+    }
+
+    public function add()
+    {
+        echo "this is ADD method" . "<br>";
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+            $data = json_decode(file_get_contents('php://input'), true);
+        } else {
+            echo "Send Request Details";
+        }
+        $request = new Request_model();
+            show($request->insert($data). 'ADD request');
+
+        $this->view('home');
+    }
+    public function delete($data)
+    {
+        $request = new Request_model();
+        if($request->first(['id'=> $data]) !== false){
+            show($request->delete($data). 'Request DELETE');
+        }
+        else{
+            show("No requests");
+    }
+
+        $this->view('home');
+    }
+    public function find($data)
+    {
+        echo "this is Find method" . "<br>";
+        
+        $request = new Request_model();
+        
+            show($request->first(['id' => $data]));
+
+        $this->view('home');
+    }
+//   $request->update(9, ['name' => 'Slavik2', 'age' => 12]);
+
+}
+
+
+
+```
+Origins.php
+```Origins.php
+<?php
+
+class Origins extends Controller
+{
+    public function findAll()
+    {
+        echo "this is findAll method" . "<br>";
+
+        $origin = new Origin_model();
+        if($origin->findAll() !== false){
+            show($origin->findAll());
+        }
+        else{
+            show("No origins");
+    }
+
+        $this->view('home');
+    }
+
+    public function add()
+    {
+        echo "this is ADD method" . "<br>";
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            //var_dump($data);
+        } else {
+            echo "Send Origin Details";
+        }
+        $origin = new Origin_model();
+        if($origin->first(['name'=> $data['name']]) === false){
+            show($origin->insert($data). "Origin ADD");
+        }
+        else{
+            show("origin Exists");
+    }
+
+        $this->view('home');
+    }
+    public function delete($data)
+    {
+        echo "this is DELETE method" . "<br>";
+
+        $origin = new Origin_model();
+        if($origin->first(['name'=>$data]) !== false){
+            $row_origin = $origin->first(['name' => $data]);
+            show($origin->delete($row_origin->id).  'Role DELETE');
+        }
+        else{
+            show("No origins");
+    }
+
+        $this->view('home');
+    }
+    public function find($data)
+    {
+        echo "this is FIND method" . "<br>";
+
+        $origin = new Origin_model();
+        if($origin->first(['name'=>$data]) !== false){
+            show($origin->first(['name' => $data]));
+        }
+        else{
+            show("No origins");
+    }
+
+        $this->view('home');
+    }
+
+}
+
+
+
+```
+Medias.php
+```Medias.php
+<?php
+
+class Medias extends Controller
+{
+    public function findAll()
+    {
+        echo "this is findAll function" . "<br>";
+
+        $media = new Media_model();
+        if($media->findAll() !== false){
+            show($media->findAll());
+        }
+        else{
+            show("No medias");
+    }
+
+        $this->view('home');
+    }
+
+    public function add()
+    {
+        echo "this is ADD function" . "<br>";
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+            $data = json_decode(file_get_contents('php://input'), true);
+        } else {
+            echo "Send Media Details";
+        }
+        $media = new Media_model();
+        if($media->first(["name" => $data['name']]) === false){
+            show($media->insert($data). "Media ADD");
+        }
+        else{
+            show("media Exists");
+    }
+
+        $this->view('home');
+    }
+    public function delete($data)
+    {
+        echo "this is DELETE function" . "<br>";
+
+        $media = new Media_model();
+        if($media->first(["name" => $data]) !== false){
+            $row_media = $media->first(['name' => $data]);
+            show($media->delete($row_media->id).  'media DELETE');
+        }
+        else{
+            show("No medias");
+    }
+
+        $this->view('home');
+    }
+    public function find($data)
+    {
+        echo "this is FIND function" . "<br>";
+
+        $media = new Media_model($data);
+        if($media->first(["name" => $data]) !== false){
+            show($media->first(['name' => $data]));
+        }
+        else{
+            show("No medias");
+    }
+
+        $this->view('home');
+    }
+//   $media->update(9, ['name' => 'Slavik2', 'age' => 12]);
+
+}
+
+
+
+```
+
