@@ -15,8 +15,6 @@
 
 ### Робота з таблицею Media
 
-#### Отримати всі Медіа
-![alt text](./img/media/findAll.png)
 #### Отримати медіа за його name
 ![alt text](./img/media/find.png)
 #### Додати нову медіа
